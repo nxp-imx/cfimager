@@ -1,0 +1,15 @@
+/*
+ * File:	Changes.txt
+ *
+ * Copyright (c) 2010 Freescale Semiconductor, Inc. All rights reserved.
+ * See included license file for license details.
+*/
+
+
+Changes to cfimager.exe
+=======================================================================================
+
+1.7.3.001  06/13/2011
+
+Initial source release.
+
