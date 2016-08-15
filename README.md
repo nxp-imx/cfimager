@@ -1,4 +1,4 @@
-# cfimager
+# cfimager ver 1.7.3 GPL-2.0
 
 Write imx sb file or raw data to SD card.
 
