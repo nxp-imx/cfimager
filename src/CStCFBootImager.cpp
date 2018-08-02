@@ -109,9 +109,23 @@ void CStCFBootImager::setVolumeLabel(const std::string & label)
 void CStCFBootImager::writeImage()
 {
     assert(m_device);
-    assert(m_firmware);
+    
+	if (m_bRaw)
+	{
+		std::string filename;
+		
+		m_extra->GetExtraFilename(filename);
+		
+		CStExtraComponent extra(filename, filename);
+		extra.set_extra_reserved_size(0);
 
-    if (m_bImage || m_bRaw)
+		extra.WriteToDisk(this->m_offset / m_blockSize, m_device, this->m_skip);
+		return;
+	}
+
+	assert(m_firmware);
+
+    if (m_bImage)
     {
         writeFirmware();
         return;

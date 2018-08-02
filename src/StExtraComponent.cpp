@@ -26,6 +26,8 @@ CStExtraComponent::CStExtraComponent(std::string & extraFileName,
 
     m_extra_filesize = 0;
 
+	m_extra_reserved_size = EXTRA_RESERVERD_SIZE;
+
 	m_last_error	= PrepareData();
 }
 
@@ -82,7 +84,7 @@ ST_ERROR CStExtraComponent::PrepareData()
 
 uint64_t CStExtraComponent::GetSizeInBytes()
 {
-	return m_extra_filesize + EXTRA_RESERVERD_SIZE;
+	return m_extra_filesize + m_extra_reserved_size;
 }
 
 uint64_t CStExtraComponent::GetSizeInSectors(uint32_t sector_size)
@@ -103,10 +105,10 @@ uint64_t CStExtraComponent::GetSizeInSectors(uint32_t sector_size)
 	return sectors;
 }
 
-void CStExtraComponent::WriteToDisk(int32_t start_block, CStBlockDevice * pDevice)
+void CStExtraComponent::WriteToDisk(int32_t start_block, CStBlockDevice * pDevice, uint64_t input_skip_byte)
 {
     int buffersize;
-    buffersize = 0x1000;
+    buffersize = 0x100000;
 
     char *buff =new char[buffersize];
     
@@ -132,15 +134,33 @@ void CStExtraComponent::WriteToDisk(int32_t start_block, CStBlockDevice * pDevic
 		return ;
 	}
     
-    int i=0;
-    int precent, old;
-    precent = old =0;
-    while( fw_file.read(buff,buffersize) >0)
-    {
-        pDevice->writeBlocks(start_block+i,buffersize/pDevice->getBlockSize(),buff);
-        i+=buffersize/pDevice->getBlockSize();
+	uint64_t i=0;
+    uint64_t precent, old;
+    precent= 0;
+	old = 1000;
 
-        precent = (i)*100 /(this->m_extra_filesize/pDevice->getBlockSize());
+	fw_file.seekg(input_skip_byte, ifstream::beg);
+	
+	DWORD start = GetTickCount();
+
+	uint64_t total_blocks = this->m_extra_filesize;
+	total_blocks += pDevice->getBlockSize() - 1;
+	total_blocks /= pDevice->getBlockSize();
+
+    while(1)
+    {
+		fw_file.read(buff, buffersize);
+		if (fw_file.gcount() == 0)
+			break;
+
+		uint64_t sz = fw_file.gcount();
+		sz += pDevice->getBlockSize() - 1;
+		sz /= pDevice->getBlockSize();
+		
+        pDevice->writeBlocks(start_block+i, sz,buff);
+        i += sz;
+
+        precent = (i)*100 / total_blocks;
         if(precent != old)
         {
             printf("write %d%%\r", precent);
@@ -148,6 +168,16 @@ void CStExtraComponent::WriteToDisk(int32_t start_block, CStBlockDevice * pDevic
         }
     }
 
+	DWORD end = GetTickCount();
+
+	uint64_t speed;
+	if (end - start == 0)
+		speed = 1000;
+	else
+		speed = (total_blocks * pDevice->getBlockSize()) * 1000 / (end - start);
+
+	printf("\n\nTotal: %d.%03ds  speed:%lld.%03lldMB/s", (end - start) / 1000, (end - start) % 1000,
+		speed / 10000000, speed / 1000);
     delete buff;
 
 }

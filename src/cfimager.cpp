@@ -148,34 +148,43 @@ public:
             printf("device block size = %u bytes\n", device.getBlockSize());
             printf("device block count = %#x\n\n", device.getBlockCount());
 			
+			CStCFBootImager imager;
+
 			// check if media is removable
 //			if (!m_showInfo && !device.isMediaRemovable())
 //			{
 //				throw std::runtime_error("media is not removable");
 //			}
-			
-            CStFwComponent firmware(m_filename,"CStFwComponent");
-			// create firmware instance
-            unsigned extraBlocks=0;
-            if( !m_filename.empty() )
-            {
+			if(!m_bRaw)
+			{
+				CStFwComponent firmware(m_filename,"CStFwComponent");
+				// create firmware instance
+				unsigned extraBlocks=0;
+				if( !m_filename.empty())
+				{
 			    
-		    	THROW_IF_ST_ERROR( firmware.GetLastError());
-	    		uint64_t firmwareSize = firmware.GetSizeInBytes();
-	    		if (firmwareSize == 0)
-	    		{
-	    			throw std::runtime_error("empty firmware file");
-	    		}
+		    		THROW_IF_ST_ERROR( firmware.GetLastError());
+	    			uint64_t firmwareSize = firmware.GetSizeInBytes();
+	    			if (firmwareSize == 0)
+	    			{
+	    				throw std::runtime_error("empty firmware file");
+	    			}
 			
-               	uint64_t firmwareBlocks = firmware.GetSizeInSectors(device.getBlockSize());
-	    		printf("firmware size = %#x bytes (%#x blocks)\n", (uint32_t)firmwareSize, (uint32_t)firmwareBlocks);
+               		uint64_t firmwareBlocks = firmware.GetSizeInSectors(device.getBlockSize());
+	    			printf("firmware size = %#x bytes (%#x blocks)\n", (uint32_t)firmwareSize, (uint32_t)firmwareBlocks);
 		
             
-			    // compute extra space in blocks
-			    extraBlocks = computeExtraBlocks(device.getBlockSize(), firmwareSize);
-			    printf("extra blocks = %u\n", extraBlocks);
+					// compute extra space in blocks
+					extraBlocks = computeExtraBlocks(device.getBlockSize(), firmwareSize);
+					printf("extra blocks = %u\n", extraBlocks);
+				}
+				imager.setFirmware(&firmware);
+				imager.setExtraBlocks(extraBlocks);
 			}
-            
+
+			if (m_bRaw && m_extra_filename.empty())
+				m_extra_filename = m_filename;
+
             CStExtraComponent extra(m_extra_filename,"CStFwComponent");
             if( !m_extra_filename.empty())
             {
@@ -185,17 +194,15 @@ public:
 			// now do the real work
 			try
 			{
-				CStCFBootImager imager;
 				imager.setROMVersion(m_romVersion);
 				imager.setListener(this);
 				imager.setDevice(&device);
-				imager.setFirmware(&firmware);
+				
                 imager.setExtra(&extra);
 				imager.setAlwaysFormat(m_alwaysFormat);
 				imager.setWriteFAT32(!m_skipFatFormat);
                 imager.setWinCEVersion(m_WinCEVersion);
-				imager.setExtraBlocks(extraBlocks);                
-                imager.Image(m_bImage);
+				imager.Image(m_bImage);
                 imager.RedundantBoot(m_bRedundantBoot);
                 imager.BCBBoot(m_bBCBBoot);
 				imager.m_bRaw = m_bRaw;
